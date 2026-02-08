@@ -10,24 +10,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
 
-    <title> Pictionary </title>
+    <title>Pictionary</title>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
         /* --- ESTILOS GENERALES --- */
         body { margin: 0; padding: 0; overflow: hidden; background-color: #333; touch-action: none; font-family: 'Bungee', sans-serif; -webkit-user-select: none; user-select: none; }
         
-        /* PANTALLAS (Todas ocultas por defecto excepto la activa) */
+        .hidden { display: none !important; }
+        
+        /* PANTALLAS */
         .screen { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            display: none; /* Oculto por defecto */
-            flex-direction: column; align-items: center; justify-content: center; 
-            background: rgba(0,0,0,0.95); color: white;
-            z-index: 10;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 5000; background: rgba(0,0,0,0.95); color: white; transition: opacity 0.3s;
         }
-        
-        /* La clase .active es la que muestra la pantalla */
-        .screen.active { display: flex !important; }
 
         /* SELECCIÓN Y NOMBRES */
         #char-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin: 20px; }
@@ -43,12 +40,7 @@
         .action-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b33939; }
 
         /* JUEGO / TABLERO */
-        #game-container { 
-            position: relative; width: 100vw; height: 100vh; 
-            background: #00d2ff url('fondo.webp') center/cover; 
-            display: none; /* Oculto inicial */
-        }
-        #game-container.active { display: block !important; } /* El tablero es block, no flex */
+        #game-container { position: relative; width: 100vw; height: 100vh; background: #00d2ff url('fondo.webp') center/cover; }
         
         #turn-bar {
             position: absolute; top: 0; left: 0; width: 100%; height: 90px;
@@ -80,80 +72,75 @@
 
         .token { position: absolute; width: 12vmin; height: 12vmin; border-radius: 50%; border: 3px solid white; background-color: white; background-size: cover; box-shadow: 0 5px 10px rgba(0,0,0,0.5); z-index: 10; transform: translate(-50%, -50%); transition: left 0.5s ease, top 0.5s ease; }
 
-        /* --- PANTALLA DE DIBUJO (NUEVA LÓGICA) --- */
+        /* --- LIENZO DE DIBUJO --- */
         #drawing-screen { 
             background: #222; 
-            z-index: 9999; /* SIEMPRE ENCIMA */
+            z-index: 6000; 
+            /* Se muestra u oculta usando la clase 'hidden' */
         }
         
         #drawing-header {
-            position: absolute; top: 10px; left: 0; width: 100%; text-align: center;
-            color: white; font-size: 3vmin; z-index: 10002; pointer-events: none;
+            width: 100%; height: 50px; display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 3vmin; margin-bottom: 5px;
         }
 
         #canvas-wrapper { 
-            position: relative; width: 90vw; height: 80vh; 
+            position: relative; width: 95vw; height: 75vh; 
             background: white; border-radius: 20px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
             overflow: hidden; touch-action: none; 
-            display: block;
         }
+        canvas { display: block; cursor: crosshair; touch-action: none; width: 100%; height: 100%; }
         
-        canvas { 
-            display: block; width: 100%; height: 100%; 
-            touch-action: none; cursor: crosshair; 
-        }
-        
-        #timer-display { position: absolute; top: 15px; right: 25px; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 24px; font-family: 'Montserrat', sans-serif; font-weight: bold; display: flex; align-items: center; gap: 10px; border: 2px solid white; z-index: 10005; pointer-events: none;}
+        /* Reloj */
+        #timer-display { position: absolute; top: 15px; right: 25px; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 24px; font-family: 'Montserrat', sans-serif; font-weight: bold; display: flex; align-items: center; gap: 10px; border: 2px solid white; z-index: 6100; pointer-events: none;}
         .time-warning { color: #f1c40f !important; border-color: #f1c40f !important; }
         .time-danger { color: #e74c3c !important; border-color: #e74c3c !important; animation: pulse-red 0.5s infinite; }
         @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        #timeout-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10010; display: none; }
+        /* Bloqueo Tiempo Agotado */
+        #timeout-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 6500; }
 
-        /* Barra de Herramientas */
-        #tools-bar { 
-            display: flex; gap: 20px; margin-top: 15px; align-items: center; 
-            width: 100%; justify-content: center; z-index: 10002;
-        }
+        /* BARRA DE HERRAMIENTAS (PINTAR) */
+        #tools-bar { display: flex; gap: 20px; margin-top: 15px; align-items: center; width: 95%; justify-content: center; z-index: 6002; }
         .tool-btn { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #ccc; cursor: pointer; }
         .tool-btn.active { transform: scale(1.1); border-color: white; box-shadow: 0 0 10px white; }
         .eraser { background: #ddd url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black"><path d="M16.24 3.56l4.95 4.95c.78.78.78 2.05 0 2.83L8.75 23.75c-.78.78-2.05.78-2.83 0L.97 18.8c-.78-.78-.78-2.05 0-2.83l12.44-12.44c.78-.78 2.05-.78 2.83 0z"/></svg>') center/60% no-repeat; }
 
+        /* BARRA DE DECISIÓN (RESULTADO) - Oculta al principio */
+        #decision-bar { display: none; gap: 40px; margin-top: 15px; align-items: center; width: 95%; justify-content: center; z-index: 6002; }
+        .decision-btn { padding: 15px 40px; font-size: 24px; font-family: 'Bungee'; border-radius: 50px; border: none; cursor: pointer; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.5); }
+
         /* --- MODAL REVELACIÓN (Aviso de turno) --- */
         #artist-reveal-modal { 
             position: absolute; top:0; left:0; width:100%; height:100%; 
-            background:rgba(0,0,0,0.95); z-index:8000; 
+            background:rgba(0,0,0,0.95); z-index:7000; 
             display:none; flex-direction:column; align-items:center; justify-content:center; 
             text-align:center; color:white; 
         }
         .artist-big-avatar { width: 150px; height: 150px; border-radius: 50%; border: 5px solid #2ed573; margin: 20px; background-size: cover; animation: pop 0.5s; }
 
-        /* --- MODAL RESOLUCIÓN --- */
-        #resolve-modal { position: absolute; top:0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 8500; }
-        .winner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; }
-        .winner-btn { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 15px; cursor: pointer; border: 2px solid transparent; }
-        .winner-btn:active { background: #2ed573; border-color: white; }
-        
+        /* --- PANTALLA VICTORIA --- */
+        #victory-screen { background: rgba(0,0,0,0.8); }
         #confetti { position: absolute; pointer-events: none; z-index: 9000; }
         @keyframes pop { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
 
-    <div id="setup-screen" class="screen active">
+    <div id="setup-screen" class="screen">
         <h1>ELIGE QUIÉN JUEGA</h1>
         <div id="char-grid"></div>
         <button id="next-btn" class="action-btn" onclick="goToNames()" style="opacity: 0.5; pointer-events: none;">SIGUIENTE</button>
     </div>
 
-    <div id="name-screen" class="screen">
+    <div id="name-screen" class="screen hidden">
         <h1>NOMBRE DE JUGADORES</h1>
         <div id="name-inputs-container"></div>
         <button class="action-btn" onclick="startGame()">¡EMPEZAR!</button>
     </div>
 
-    <div id="game-container">
+    <div id="game-container" class="hidden">
         <div id="turn-bar">
             <div class="turn-info-box" style="border-right: 2px solid rgba(255,255,255,0.2);">
                 <span class="turn-label">SE JUEGA EL PUNTO</span>
@@ -177,7 +164,7 @@
         <button class="action-btn" style="background-color: #555; font-size: 16px; padding: 10px 20px; margin-top: 10px;" onclick="closeReveal()">Cancelar</button>
     </div>
 
-    <div id="drawing-screen" class="screen">
+    <div id="drawing-screen" class="screen hidden">
         <div id="drawing-header">
             DIBUJANDO: <span id="drawing-artist-name" style="color: #2ed573; margin-left: 10px; font-weight: bold;">NOMBRE</span>
         </div>
@@ -186,10 +173,10 @@
             <canvas id="paint-canvas"></canvas>
             <div id="timer-display">⏳ 02:00</div>
             
-            <div id="timeout-overlay">
+            <div id="timeout-overlay" class="hidden">
                 <h1 style="font-size: 8vmin; color: #ff4757; text-shadow: 0 0 20px white;">¡TIEMPO! 🛑</h1>
-                <p style="font-size: 3vmin; margin-bottom: 30px;">Se acabaron los 2 minutos.</p>
-                <button class="action-btn" onclick="finishDrawing()">VER RESULTADOS</button>
+                <p style="font-size: 3vmin; margin-bottom: 30px;">¡Manos arriba!</p>
+                <button class="action-btn" onclick="switchToDecisionMode()">VER DIBUJO</button>
             </div>
         </div>
 
@@ -202,23 +189,21 @@
             
             <div style="flex-grow: 1;"></div>
             <button class="action-btn" style="margin:0; font-size: 18px; background: #555; margin-right: 10px;" onclick="cancelDrawing()">SALIR</button>
-            <button class="action-btn" style="margin:0; font-size: 18px;" onclick="finishDrawing()">HECHO</button>
+            <button class="action-btn" style="margin:0; font-size: 18px;" onclick="switchToDecisionMode()">HECHO</button>
+        </div>
+
+        <div id="decision-bar">
+            <h2 style="margin-right: 20px;">¿HAN ACERTADO?</h2>
+            <button class="decision-btn" style="background: #e74c3c;" onclick="nobodyGuessed()">❌ NO</button>
+            <button class="decision-btn" style="background: #2ed573;" onclick="awardPoint()">✅ SÍ</button>
         </div>
     </div>
 
-    <div id="resolve-modal">
-        <h1 style="color: white; font-size: 4vmin;">¿HAN ACERTADO?</h1>
-        <div style="display: flex; gap: 20px; margin-bottom: 30px;">
-            <button class="action-btn" style="background: #e74c3c;" onclick="nobodyGuessed()">❌ NO</button>
-            <button class="action-btn" style="background: #2ed573;" onclick="awardPoint()">✅ SÍ</button>
-        </div>
-        <p style="color: #aaa; font-size: 2vmin; margin-top: 20px;">Si aciertan, avanza: <span id="point-receiver" style="color:white; font-weight:bold;">NOMBRE</span></p>
-    </div>
-
-    <div id="victory-screen" class="screen">
+    <div id="victory-screen" class="screen hidden">
         <canvas id="confetti"></canvas>
         <h1 style="font-size: 8vmin; color: #ffeb3b;">¡FELICIDADES!</h1>
         <h2 id="final-winner-name" style="font-size: 6vmin;">NOMBRE</h2>
+        <button class="action-btn" onclick="location.reload()">JUGAR OTRA VEZ</button>
     </div>
 
     <script>
@@ -228,17 +213,6 @@
         let currentArtistIndex = 0; 
         let tokenPositions = []; 
         let timerInterval; let timeLeft = 120; let canDraw = true;
-
-        // --- GESTIÓN DE PANTALLAS (SIMPLE Y ROBUSTA) ---
-        function showScreen(screenId) {
-            // Ocultar todas las pantallas
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('game-container').classList.remove('active');
-            
-            // Mostrar la elegida
-            const target = document.getElementById(screenId);
-            if(target) target.classList.add('active');
-        }
 
         // 1. SETUP
         const charGrid = document.getElementById('char-grid');
@@ -258,7 +232,8 @@
         });
 
         function goToNames() {
-            showScreen('name-screen');
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('name-screen').classList.remove('hidden');
             const container = document.getElementById('name-inputs-container');
             container.innerHTML = '';
             players.forEach((p, i) => {
@@ -280,7 +255,8 @@
             players.forEach((p, i) => { if(!p.name) p.name = `Jugador ${i+1}`; });
             players.sort(() => Math.random() - 0.5);
             tokenPositions = players.map(() => 0); 
-            showScreen('game-container'); // Mostrar tablero
+            document.getElementById('name-screen').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
             drawBoard(); drawTokens(); selectNewTurn();
         }
 
@@ -303,9 +279,7 @@
 
         function drawBoard() {
             const container = document.getElementById('game-container');
-            // Limpiar pasos previos para no duplicar
             container.querySelectorAll('.step').forEach(e => e.remove());
-            
             const colors = ['bg-red', 'bg-orange', 'bg-yellow', 'bg-green', 'bg-blue', 'bg-purple'];
             pathPoints.forEach((p, i) => {
                 const step = document.createElement('div');
@@ -343,34 +317,25 @@
             document.getElementById('artist-reveal-modal').style.display = 'flex';
         }
 
-        function closeReveal() {
-            document.getElementById('artist-reveal-modal').style.display = 'none';
-        }
+        function closeReveal() { document.getElementById('artist-reveal-modal').style.display = 'none'; }
 
         function startDrawingSession() {
-            try {
-                // 1. Ocultar modal aviso
-                document.getElementById('artist-reveal-modal').style.display = 'none';
-                
-                // 2. Mostrar pantalla dibujo FORZADA
-                showScreen('drawing-screen');
-                
-                // 3. Info
-                document.getElementById('drawing-artist-name').innerText = players[currentArtistIndex].name;
-                
-                // 4. Iniciar Canvas con retraso para asegurar renderizado
-                setTimeout(() => {
-                    initCanvas();
-                    // Resetear reloj
-                    timeLeft = 120; canDraw = true;
-                    document.getElementById('timeout-overlay').style.display = 'none';
-                    document.getElementById('timer-display').className = '';
-                    updateTimerDisplay();
-                    startTimer();
-                }, 100);
-            } catch (e) {
-                alert("Error al iniciar dibujo: " + e.message);
-            }
+            document.getElementById('artist-reveal-modal').style.display = 'none';
+            document.getElementById('drawing-screen').classList.remove('hidden');
+            document.getElementById('drawing-artist-name').innerText = players[currentArtistIndex].name;
+            
+            // RESETEAR ESTADO: Mostrar herramientas, ocultar decisión
+            document.getElementById('tools-bar').style.display = 'flex';
+            document.getElementById('decision-bar').style.display = 'none';
+            document.getElementById('timeout-overlay').classList.add('hidden');
+            
+            setTimeout(() => {
+                initCanvas();
+                timeLeft = 120; canDraw = true;
+                document.getElementById('timer-display').className = '';
+                updateTimerDisplay();
+                startTimer();
+            }, 100);
         }
         
         const canvas = document.getElementById('paint-canvas');
@@ -378,10 +343,7 @@
         const wrapper = document.getElementById('canvas-wrapper');
 
         function initCanvas() {
-            // Ajustar canvas al tamaño real del contenedor visible
-            canvas.width = wrapper.clientWidth;
-            canvas.height = wrapper.clientHeight;
-            
+            canvas.width = wrapper.clientWidth; canvas.height = wrapper.clientHeight;
             ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = 'black';
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
@@ -404,22 +366,63 @@
             if(timeLeft <= 10) display.classList.add('time-danger');
         }
 
-        function timeIsUp() { clearInterval(timerInterval); canDraw = false; playHorn(); document.getElementById('timeout-overlay').style.display = 'flex'; }
-        
-        function cancelDrawing() { 
+        function timeIsUp() { 
             clearInterval(timerInterval); 
-            showScreen('game-container'); // Volver al tablero
+            canDraw = false; 
+            playHorn(); 
+            document.getElementById('timeout-overlay').classList.remove('hidden'); 
         }
         
-        function finishDrawing() {
+        // --- AQUÍ ESTÁ LA MAGIA DEL CAMBIO DE ESTADO ---
+        function switchToDecisionMode() {
             clearInterval(timerInterval);
-            // Ocultar pantalla dibujo pero no ir al tablero todavía
-            // Vamos al modal de resolución
-            document.getElementById('resolve-modal').style.display = 'flex';
-            document.getElementById('point-receiver').innerText = players[currentPlayerIndex].name;
+            canDraw = false;
+            
+            // 1. Quitar overlay de tiempo si existe
+            document.getElementById('timeout-overlay').classList.add('hidden');
+            
+            // 2. Ocultar lápices
+            document.getElementById('tools-bar').style.display = 'none';
+            
+            // 3. Mostrar botones de decisión
+            document.getElementById('decision-bar').style.display = 'flex';
         }
 
-        // --- DIBUJO EVENTOS ---
+        function cancelDrawing() { 
+            clearInterval(timerInterval); 
+            document.getElementById('drawing-screen').classList.add('hidden'); 
+        }
+
+        function nobodyGuessed() {
+            document.getElementById('drawing-screen').classList.add('hidden');
+            nextTurn();
+        }
+
+        function awardPoint() {
+            document.getElementById('drawing-screen').classList.add('hidden');
+            tokenPositions[currentPlayerIndex]++; 
+            drawTokens();
+            playDing();
+            if(tokenPositions[currentPlayerIndex] >= pathPoints.length - 1) {
+                setTimeout(() => doVictory(currentPlayerIndex), 1000);
+            } else {
+                nextTurn();
+            }
+        }
+
+        function nextTurn() {
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            selectNewTurn();
+        }
+
+        function doVictory(winnerIndex) {
+            document.getElementById('victory-screen').classList.remove('hidden');
+            document.getElementById('final-winner-name').innerText = players[winnerIndex].name;
+            startConfetti();
+            playFanfare();
+        }
+
+        // --- DIBUJO ---
         let isDrawing = false; let lastX = 0; let lastY = 0;
         function getCoords(e) {
             const rect = canvas.getBoundingClientRect();
@@ -437,7 +440,7 @@
 
         function draw(e) {
             if(!isDrawing || !canDraw) return;
-            e.preventDefault(); // Evitar scroll
+            e.preventDefault();
             const [x, y] = getCoords(e);
             ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
             [lastX, lastY] = [x, y];
@@ -450,63 +453,12 @@
             else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = type; ctx.lineWidth = 5; }
         }
 
-        // --- RESOLUCIÓN ---
-        function nobodyGuessed() {
-            document.getElementById('resolve-modal').style.display = 'none';
-            showScreen('game-container');
-            nextTurn();
-        }
-
-        function awardPoint() {
-            document.getElementById('resolve-modal').style.display = 'none';
-            showScreen('game-container');
-            tokenPositions[currentPlayerIndex]++; 
-            drawTokens();
-            playDing();
-            if(tokenPositions[currentPlayerIndex] >= pathPoints.length - 1) {
-                setTimeout(() => doVictory(currentPlayerIndex), 1000);
-            } else {
-                nextTurn();
-            }
-        }
-
-        function nextTurn() {
-            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-            selectNewTurn();
-        }
-
-        function doVictory(winnerIndex) {
-            showScreen('victory-screen');
-            document.getElementById('final-winner-name').innerText = players[winnerIndex].name;
-            startConfetti();
-            playFanfare();
-        }
-
-        // Sonidos
+        // --- SONIDOS ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playDing() {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime+0.1);
-            g.gain.setValueAtTime(0.1, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.1);
-            osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.1);
-        }
-        function playHorn() {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime+0.5);
-            g.gain.setValueAtTime(0.2, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+0.5);
-            osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.5);
-        }
-        function playFanfare() {
-             if(audioCtx.state === 'suspended') audioCtx.resume();
-             [400, 500, 600, 800].forEach((f, i) => { setTimeout(() => { const osc=audioCtx.createOscillator(); const g=audioCtx.createGain(); osc.frequency.value=f; g.gain.setValueAtTime(0.1,audioCtx.currentTime); g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.4); osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+0.4); }, i*200); });
-        }
-        function startConfetti() {
-            const c = document.getElementById('confetti'); const ctx = c.getContext('2d'); c.width = window.innerWidth; c.height = window.innerHeight;
-            let particles = Array.from({length: 200}, () => ({x: Math.random()*c.width, y: Math.random()*c.height-c.height, c: `hsl(${Math.random()*360},100%,50%)`, v: Math.random()*5+2}));
-            setInterval(() => { ctx.clearRect(0,0,c.width,c.height); particles.forEach(p => { p.y += p.v; if(p.y > c.height) p.y = -10; ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 8, 8); }); }, 20);
-        }
+        function playDing() { if(audioCtx.state === 'suspended') audioCtx.resume(); const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.frequency.setValueAtTime(500,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(1000,audioCtx.currentTime+0.1);g.gain.setValueAtTime(0.1,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.1);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+0.1);}
+        function playHorn() { if(audioCtx.state === 'suspended') audioCtx.resume(); const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.type='sawtooth';o.frequency.setValueAtTime(150,audioCtx.currentTime);o.frequency.linearRampToValueAtTime(100,audioCtx.currentTime+0.5);g.gain.setValueAtTime(0.2,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.5);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+0.5);}
+        function playFanfare() { if(audioCtx.state === 'suspended') audioCtx.resume(); [400,500,600,800].forEach((f,i)=>{setTimeout(()=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.frequency.value=f;g.gain.setValueAtTime(0.1,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.4);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+0.4);},i*200);});}
+        function startConfetti() { const c=document.getElementById('confetti');const ctx=c.getContext('2d');c.width=window.innerWidth;c.height=window.innerHeight;let p=Array.from({length:200},()=>({x:Math.random()*c.width,y:Math.random()*c.height-c.height,c:`hsl(${Math.random()*360},100%,50%)`,v:Math.random()*5+2}));setInterval(()=>{ctx.clearRect(0,0,c.width,c.height);p.forEach(k=>{k.y+=k.v;if(k.y>c.height)k.y=-10;ctx.fillStyle=k.c;ctx.fillRect(k.x,k.y,8,8);});},20);}
     </script>
 </body>
 </html>
