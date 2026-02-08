@@ -10,15 +10,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
 
-    <title>Sprunki Pictionary V8</title>
+    <title>Sprunki Pictionary V9</title>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
         /* --- ESTILOS GENERALES --- */
         body { margin: 0; padding: 0; overflow: hidden; background-color: #333; touch-action: none; font-family: 'Bungee', sans-serif; -webkit-user-select: none; user-select: none; }
         
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5000; transition: opacity 0.3s; background: rgba(0,0,0,0.95); color: white; }
+        /* CLASES DE UTILIDAD */
         .hidden { display: none !important; }
+        
+        .screen { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 5000; background: rgba(0,0,0,0.95); color: white; 
+        }
 
         /* SELECCIÓN Y NOMBRES */
         #char-grid { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin: 20px; }
@@ -36,7 +42,6 @@
         /* JUEGO / TABLERO */
         #game-container { position: relative; width: 100vw; height: 100vh; background: #00d2ff url('fondo.webp') center/cover; }
         
-        /* BARRA DE TURNO */
         #turn-bar {
             position: absolute; top: 0; left: 0; width: 100%; height: 90px;
             background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
@@ -49,31 +54,30 @@
         .turn-label { font-size: 1.8vmin; color: #aaa; }
         .turn-name { color: #ffeb3b; font-weight: bold; }
 
-        /* BOTÓN LÁPIZ (Z-INDEX MUY ALTO) */
         #pencil-btn { 
             position: absolute; bottom: 20px; left: 20px; 
             width: 90px; height: 90px; background: white; border: 4px solid #333; 
             border-radius: 20px; font-size: 45px; display: flex; align-items: center; justify-content: center; 
             box-shadow: 0 6px 0 #333; z-index: 4500; 
-            animation: bounce 2s infinite; 
-            cursor: pointer;
+            animation: bounce 2s infinite; cursor: pointer;
         }
         @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
 
-        /* CASILLAS */
+        /* CASILLAS Y FICHAS */
         .step { position: absolute; width: 11vmin; height: 11vmin; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; color: white; font-size: 4vmin; transform: translate(-50%, -50%); z-index: 1; }
         .step.start { background: #333; width: 13vmin; height: 13vmin; }
         .step.finish { width: 18vmin; height: 18vmin; background: conic-gradient(red, orange, yellow, lime, cyan, blue, magenta, red); animation: spin 4s linear infinite; border: 6px solid white; }
         .bg-red { background: #ff4757; } .bg-orange { background: #ffa502; } .bg-yellow { background: #eccc68; color: #333; }
         .bg-green { background: #2ed573; } .bg-blue { background: #1e90ff; } .bg-purple { background: #5352ed; }
 
-        /* FICHAS */
         .token { position: absolute; width: 12vmin; height: 12vmin; border-radius: 50%; border: 3px solid white; background-color: white; background-size: cover; box-shadow: 0 5px 10px rgba(0,0,0,0.5); z-index: 10; transform: translate(-50%, -50%); transition: left 0.5s ease, top 0.5s ease; }
 
         /* --- LIENZO DE DIBUJO --- */
         #drawing-screen { 
-            background: #333; /* Fondo oscuro para resaltar el papel */
-            z-index: 6000; /* Z-INDEX MÁXIMO */
+            background: #333; 
+            z-index: 6000; 
+            /* Importante: Flex para centrar, pero lo ocultamos con la clase .hidden */
+            display: flex; 
         }
         
         #drawing-header {
@@ -87,9 +91,8 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
             overflow: hidden; touch-action: none; 
         }
-        canvas { display: block; cursor: crosshair; touch-action: none; }
+        canvas { display: block; cursor: crosshair; touch-action: none; width: 100%; height: 100%; }
         
-        /* Reloj */
         #timer-display { position: absolute; top: 10px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 30px; font-size: 24px; font-family: 'Montserrat', sans-serif; font-weight: bold; display: flex; align-items: center; gap: 10px; border: 2px solid white; z-index: 6100; pointer-events: none;}
         .time-warning { color: #f1c40f !important; border-color: #f1c40f !important; }
         .time-danger { color: #e74c3c !important; border-color: #e74c3c !important; animation: pulse-red 0.5s infinite; }
@@ -97,20 +100,28 @@
 
         #timeout-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 6500; display: none; }
 
-        /* Barra de Herramientas */
         #tools-bar { display: flex; gap: 15px; margin-top: 15px; align-items: center; width: 95%; justify-content: center; }
         .tool-btn { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #ccc; cursor: pointer; }
         .tool-btn.active { transform: scale(1.1); border-color: white; box-shadow: 0 0 10px white; }
         .eraser { background: #ddd url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black"><path d="M16.24 3.56l4.95 4.95c.78.78.78 2.05 0 2.83L8.75 23.75c-.78.78-2.05.78-2.83 0L.97 18.8c-.78-.78-.78-2.05 0-2.83l12.44-12.44c.78-.78 2.05-.78 2.83 0z"/></svg>') center/60% no-repeat; }
 
+        /* --- MODAL REVELACIÓN (Aviso de turno) --- */
+        #artist-reveal-modal { 
+            position: absolute; top:0; left:0; width:100%; height:100%; 
+            background:rgba(0,0,0,0.95); z-index:7000; 
+            display:flex; flex-direction:column; align-items:center; justify-content:center; 
+            text-align:center; color:white; 
+        }
+        .artist-big-avatar { width: 150px; height: 150px; border-radius: 50%; border: 5px solid #2ed573; margin: 20px; background-size: cover; animation: pop 0.5s; }
+
         /* --- MODAL RESOLUCIÓN --- */
-        #resolve-modal { position: absolute; background: rgba(0,0,0,0.9); width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 7000; display: none; }
+        #resolve-modal { position: absolute; background: rgba(0,0,0,0.95); width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 7000; }
         .winner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; }
         .winner-btn { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 15px; cursor: pointer; border: 2px solid transparent; }
         .winner-btn:active { background: #2ed573; border-color: white; }
         
         #confetti { position: absolute; pointer-events: none; z-index: 8000; }
-        @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+        @keyframes pop { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -140,11 +151,18 @@
                 <span id="turn-artist-name" class="turn-name">NOMBRE</span>
             </div>
         </div>
-        
-        <div id="pencil-btn" onclick="openCanvas()">✏️</div>
+        <div id="pencil-btn" onclick="openArtistModal()">✏️</div>
     </div>
 
-    <div id="drawing-screen" class="screen hidden">
+    <div id="artist-reveal-modal" class="hidden">
+        <h2 style="font-size: 4vmin;">LE TOCA DIBUJAR A:</h2>
+        <div id="reveal-avatar" class="artist-big-avatar"></div>
+        <h1 id="reveal-name" style="font-size: 8vmin; color: #2ed573;">NOMBRE</h1>
+        <button class="action-btn" style="background-color: #2ed573;" onclick="startDrawingSession()">¡A DIBUJAR!</button>
+        <button class="action-btn" style="background-color: #555; font-size: 16px; padding: 10px 20px; margin-top: 10px;" onclick="closeReveal()">Cancelar</button>
+    </div>
+
+    <div id="drawing-screen" class="hidden">
         <div id="drawing-header">
             DIBUJANDO: <span id="drawing-artist-name" style="color: #2ed573; margin-left: 10px; font-weight: bold;">NOMBRE</span>
         </div>
@@ -167,7 +185,8 @@
             <div class="tool-btn" style="background: #2ed573;" onclick="setTool('#2ed573', this)"></div>
             <div class="tool-btn eraser" onclick="setTool('eraser', this)"></div>
             
-            <button class="action-btn" style="margin:0; font-size: 18px; background: #555; margin-left: auto;" onclick="cancelDrawing()">SALIR</button>
+            <div style="flex-grow: 1;"></div>
+            <button class="action-btn" style="margin:0; font-size: 18px; background: #555; margin-right: 10px;" onclick="cancelDrawing()">SALIR</button>
             <button class="action-btn" style="margin:0; font-size: 18px;" onclick="finishDrawing()">HECHO</button>
         </div>
     </div>
@@ -188,6 +207,7 @@
     </div>
 
     <script>
+        // DATOS
         const allImages = ['verde.png', 'rosa.png', 'amarillo.png', 'naranja.png', 'verdeclaro.png', 'rojo.png', 'azul.png'];
         let players = []; 
         let currentPlayerIndex = 0; 
@@ -201,13 +221,14 @@
         const nameScreen = document.getElementById('name-screen');
         const gameContainer = document.getElementById('game-container');
         const drawingScreen = document.getElementById('drawing-screen');
+        const revealModal = document.getElementById('artist-reveal-modal');
         const resolveModal = document.getElementById('resolve-modal');
         const canvas = document.getElementById('paint-canvas');
         const ctx = canvas.getContext('2d');
         const timerDisplay = document.getElementById('timer-display');
         const timeoutOverlay = document.getElementById('timeout-overlay');
 
-        // 1. SELECCIÓN
+        // 1. SETUP
         const charGrid = document.getElementById('char-grid');
         allImages.forEach(img => {
             const btn = document.createElement('div');
@@ -288,7 +309,6 @@
             players.forEach((p, i) => {
                 const token = document.createElement('div');
                 token.className = 'token';
-                token.id = `token-${i}`;
                 token.style.backgroundImage = `url('${p.img}')`;
                 const posIndex = tokenPositions[i];
                 const point = pathPoints[posIndex];
@@ -300,26 +320,48 @@
             });
         }
 
-        // --- SISTEMA DE DIBUJO ---
-        function openCanvas() {
+        // --- SISTEMA DE MODAL Y DIBUJO ---
+        function openArtistModal() {
+            // Preparamos el modal con la info del artista actual
+            const artist = players[currentArtistIndex];
+            document.getElementById('reveal-avatar').style.backgroundImage = `url('${artist.img}')`;
+            document.getElementById('reveal-name').innerText = artist.name;
+            
+            // Mostramos el modal (quitando la clase hidden)
+            revealModal.classList.remove('hidden');
+        }
+
+        function closeReveal() {
+            revealModal.classList.add('hidden');
+        }
+
+        function startDrawingSession() {
+            // 1. Cerrar modal de aviso
+            revealModal.classList.add('hidden');
+            
+            // 2. Mostrar pantalla de dibujo
             drawingScreen.classList.remove('hidden');
+            
+            // 3. Configurar interfaz
             document.getElementById('drawing-artist-name').innerText = players[currentArtistIndex].name;
             
-            // FORZAR TAMAÑO CANVAS
-            const container = document.getElementById('canvas-container');
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            
-            // RESET CONTEXTO
-            ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = 'black';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // RESET RELOJ
-            timeLeft = 120; canDraw = true;
-            timeoutOverlay.style.display = 'none';
-            timerDisplay.className = '';
-            updateTimerDisplay();
-            startTimer();
+            // 4. INICIALIZAR CANVAS (Con pequeño retraso para asegurar que el DOM está listo)
+            setTimeout(() => {
+                const container = document.getElementById('canvas-container');
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                
+                // Resetear pincel
+                ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = 'black';
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Resetear reloj
+                timeLeft = 120; canDraw = true;
+                timeoutOverlay.style.display = 'none';
+                timerDisplay.className = '';
+                updateTimerDisplay();
+                startTimer();
+            }, 50);
         }
 
         function startTimer() {
@@ -344,12 +386,11 @@
         function finishDrawing() {
             clearInterval(timerInterval);
             drawingScreen.classList.add('hidden');
-            resolveModal.style.display = 'flex';
             resolveModal.classList.remove('hidden');
             document.getElementById('point-receiver').innerText = players[currentPlayerIndex].name;
         }
 
-        // --- EVENTOS DIBUJO ---
+        // --- DIBUJO ---
         let isDrawing = false; let lastX = 0; let lastY = 0;
         function getCoords(e) {
             const rect = canvas.getBoundingClientRect();
@@ -411,7 +452,7 @@
             playFanfare();
         }
 
-        // Sonidos
+        // SONIDOS
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playDing() {
             if(audioCtx.state === 'suspended') audioCtx.resume();
