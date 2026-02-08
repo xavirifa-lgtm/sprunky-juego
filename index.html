@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
 
-    <title>Pictionary</title>
+    <title>Pictionary V11</title>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
@@ -74,9 +74,7 @@
 
         /* --- LIENZO DE DIBUJO --- */
         #drawing-screen { 
-            background: #222; 
-            z-index: 6000; 
-            /* Se muestra u oculta usando la clase 'hidden' */
+            background: #222; z-index: 6000; 
         }
         
         #drawing-header {
@@ -102,14 +100,17 @@
         #timeout-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 6500; }
 
         /* BARRA DE HERRAMIENTAS (PINTAR) */
-        #tools-bar { display: flex; gap: 20px; margin-top: 15px; align-items: center; width: 95%; justify-content: center; z-index: 6002; }
-        .tool-btn { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #ccc; cursor: pointer; }
-        .tool-btn.active { transform: scale(1.1); border-color: white; box-shadow: 0 0 10px white; }
-        .eraser { background: #ddd url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black"><path d="M16.24 3.56l4.95 4.95c.78.78.78 2.05 0 2.83L8.75 23.75c-.78.78-2.05.78-2.83 0L.97 18.8c-.78-.78-.78-2.05 0-2.83l12.44-12.44c.78-.78 2.05-.78 2.83 0z"/></svg>') center/60% no-repeat; }
+        #tools-bar { display: flex; gap: 30px; margin-top: 15px; align-items: center; width: 95%; justify-content: center; z-index: 6002; }
+        .tool-btn { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #ccc; cursor: pointer; }
+        .tool-btn.active { transform: scale(1.15); border-color: #2ed573; box-shadow: 0 0 15px #2ed573; }
+        
+        .tool-pencil { background: #333 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>') center/60% no-repeat; }
+        .tool-eraser { background: #ddd url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="black"><path d="M16.24 3.56l4.95 4.95c.78.78.78 2.05 0 2.83L8.75 23.75c-.78.78-2.05.78-2.83 0L.97 18.8c-.78-.78-.78-2.05 0-2.83l12.44-12.44c.78-.78 2.05-.78 2.83 0z"/></svg>') center/60% no-repeat; }
 
         /* BARRA DE DECISIÓN (RESULTADO) - Oculta al principio */
         #decision-bar { display: none; gap: 40px; margin-top: 15px; align-items: center; width: 95%; justify-content: center; z-index: 6002; }
         .decision-btn { padding: 15px 40px; font-size: 24px; font-family: 'Bungee'; border-radius: 50px; border: none; cursor: pointer; color: white; box-shadow: 0 4px 0 rgba(0,0,0,0.5); }
+        .decision-btn:active { transform: translateY(4px); box-shadow: none; }
 
         /* --- MODAL REVELACIÓN (Aviso de turno) --- */
         #artist-reveal-modal { 
@@ -128,19 +129,19 @@
 </head>
 <body>
 
-    <div id="setup-screen" class="screen">
+    <div id="setup-screen" class="screen active">
         <h1>ELIGE QUIÉN JUEGA</h1>
         <div id="char-grid"></div>
         <button id="next-btn" class="action-btn" onclick="goToNames()" style="opacity: 0.5; pointer-events: none;">SIGUIENTE</button>
     </div>
 
-    <div id="name-screen" class="screen hidden">
+    <div id="name-screen" class="screen">
         <h1>NOMBRE DE JUGADORES</h1>
         <div id="name-inputs-container"></div>
         <button class="action-btn" onclick="startGame()">¡EMPEZAR!</button>
     </div>
 
-    <div id="game-container" class="hidden">
+    <div id="game-container">
         <div id="turn-bar">
             <div class="turn-info-box" style="border-right: 2px solid rgba(255,255,255,0.2);">
                 <span class="turn-label">SE JUEGA EL PUNTO</span>
@@ -176,19 +177,17 @@
             <div id="timeout-overlay" class="hidden">
                 <h1 style="font-size: 8vmin; color: #ff4757; text-shadow: 0 0 20px white;">¡TIEMPO! 🛑</h1>
                 <p style="font-size: 3vmin; margin-bottom: 30px;">¡Manos arriba!</p>
-                <button class="action-btn" onclick="switchToDecisionMode()">VER DIBUJO</button>
+                <button class="action-btn" onclick="switchToDecisionMode()">VER RESULTADOS</button>
             </div>
         </div>
 
         <div id="tools-bar">
-            <div class="tool-btn active" style="background: black;" onclick="setTool('black', this)"></div>
-            <div class="tool-btn" style="background: red;" onclick="setTool('red', this)"></div>
-            <div class="tool-btn" style="background: blue;" onclick="setTool('blue', this)"></div>
-            <div class="tool-btn" style="background: #2ed573;" onclick="setTool('#2ed573', this)"></div>
-            <div class="tool-btn eraser" onclick="setTool('eraser', this)"></div>
+            <div class="tool-btn tool-pencil active" onclick="setTool('pencil', this)"></div>
+            <div class="tool-btn tool-eraser" onclick="setTool('eraser', this)"></div>
             
             <div style="flex-grow: 1;"></div>
             <button class="action-btn" style="margin:0; font-size: 18px; background: #555; margin-right: 10px;" onclick="cancelDrawing()">SALIR</button>
+            
             <button class="action-btn" style="margin:0; font-size: 18px;" onclick="switchToDecisionMode()">HECHO</button>
         </div>
 
@@ -214,6 +213,25 @@
         let tokenPositions = []; 
         let timerInterval; let timeLeft = 120; let canDraw = true;
 
+        // --- GESTIÓN DE PANTALLAS ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            
+            // Tratamiento especial para game-container que no es flex
+            document.getElementById('game-container').classList.remove('active');
+            document.getElementById('game-container').style.display = 'none';
+
+            const target = document.getElementById(screenId);
+            if(screenId === 'game-container') {
+                target.style.display = 'block';
+                target.classList.add('active');
+            } else {
+                target.classList.remove('hidden');
+                target.classList.add('active');
+            }
+        }
+
         // 1. SETUP
         const charGrid = document.getElementById('char-grid');
         allImages.forEach(img => {
@@ -232,8 +250,7 @@
         });
 
         function goToNames() {
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('name-screen').classList.remove('hidden');
+            showScreen('name-screen');
             const container = document.getElementById('name-inputs-container');
             container.innerHTML = '';
             players.forEach((p, i) => {
@@ -255,8 +272,7 @@
             players.forEach((p, i) => { if(!p.name) p.name = `Jugador ${i+1}`; });
             players.sort(() => Math.random() - 0.5);
             tokenPositions = players.map(() => 0); 
-            document.getElementById('name-screen').classList.add('hidden');
-            document.getElementById('game-container').classList.remove('hidden');
+            showScreen('game-container'); 
             drawBoard(); drawTokens(); selectNewTurn();
         }
 
@@ -321,10 +337,10 @@
 
         function startDrawingSession() {
             document.getElementById('artist-reveal-modal').style.display = 'none';
-            document.getElementById('drawing-screen').classList.remove('hidden');
+            showScreen('drawing-screen');
             document.getElementById('drawing-artist-name').innerText = players[currentArtistIndex].name;
             
-            // RESETEAR ESTADO: Mostrar herramientas, ocultar decisión
+            // RESETEAR UI
             document.getElementById('tools-bar').style.display = 'flex';
             document.getElementById('decision-bar').style.display = 'none';
             document.getElementById('timeout-overlay').classList.add('hidden');
@@ -370,36 +386,36 @@
             clearInterval(timerInterval); 
             canDraw = false; 
             playHorn(); 
+            // Mostrar Overlay con botón VER RESULTADOS
             document.getElementById('timeout-overlay').classList.remove('hidden'); 
         }
-        
-        // --- AQUÍ ESTÁ LA MAGIA DEL CAMBIO DE ESTADO ---
+
+        // --- LÓGICA CLAVE: CAMBIO DE MODO ---
         function switchToDecisionMode() {
+            // 1. Parar todo
             clearInterval(timerInterval);
             canDraw = false;
-            
-            // 1. Quitar overlay de tiempo si existe
+
+            // 2. Limpiar Overlay si estaba (caso tiempo agotado)
             document.getElementById('timeout-overlay').classList.add('hidden');
-            
-            // 2. Ocultar lápices
+
+            // 3. Cambiar barras
             document.getElementById('tools-bar').style.display = 'none';
-            
-            // 3. Mostrar botones de decisión
             document.getElementById('decision-bar').style.display = 'flex';
         }
 
         function cancelDrawing() { 
             clearInterval(timerInterval); 
-            document.getElementById('drawing-screen').classList.add('hidden'); 
+            showScreen('game-container'); 
         }
 
         function nobodyGuessed() {
-            document.getElementById('drawing-screen').classList.add('hidden');
+            showScreen('game-container');
             nextTurn();
         }
 
         function awardPoint() {
-            document.getElementById('drawing-screen').classList.add('hidden');
+            showScreen('game-container');
             tokenPositions[currentPlayerIndex]++; 
             drawTokens();
             playDing();
@@ -416,7 +432,7 @@
         }
 
         function doVictory(winnerIndex) {
-            document.getElementById('victory-screen').classList.remove('hidden');
+            showScreen('victory-screen');
             document.getElementById('final-winner-name').innerText = players[winnerIndex].name;
             startConfetti();
             playFanfare();
@@ -450,10 +466,10 @@
             document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             if(type === 'eraser') { ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = 20; }
-            else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = type; ctx.lineWidth = 5; }
+            else { ctx.globalCompositeOperation = 'source-over'; ctx.strokeStyle = 'black'; ctx.lineWidth = 5; }
         }
 
-        // --- SONIDOS ---
+        // SONIDOS
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playDing() { if(audioCtx.state === 'suspended') audioCtx.resume(); const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.frequency.setValueAtTime(500,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(1000,audioCtx.currentTime+0.1);g.gain.setValueAtTime(0.1,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.1);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+0.1);}
         function playHorn() { if(audioCtx.state === 'suspended') audioCtx.resume(); const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.type='sawtooth';o.frequency.setValueAtTime(150,audioCtx.currentTime);o.frequency.linearRampToValueAtTime(100,audioCtx.currentTime+0.5);g.gain.setValueAtTime(0.2,audioCtx.currentTime);g.gain.linearRampToValueAtTime(0,audioCtx.currentTime+0.5);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+0.5);}
