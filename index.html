@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sprunki Pictionary: Tablet Edition</title>
-<link rel="manifest" href="manifest.json">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#333333">
 
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Sprunki">
+
+    <link rel="manifest" href="manifest.json">
+
+    <title>Sprunki Pictionary</title>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
         /* --- ESTILOS GENERALES --- */
         body {
@@ -18,6 +24,8 @@
             touch-action: none; 
             font-family: 'Bungee', 'Impact', sans-serif;
             -webkit-user-select: none; user-select: none;
+            /* Previene el rebote elástico en iOS */
+            overscroll-behavior: none;
         }
 
         /* --- PANTALLAS --- */
@@ -75,7 +83,6 @@
         /* 3. JUEGO */
         #game-container {
             position: relative; width: 100vw; 
-            /* Usamos dvh para altura dinámica en móviles */
             height: 100vh; height: 100dvh; 
             background-color: #00d2ff; 
             background-image: url('fondo.webp'); background-size: cover; background-position: center;
@@ -168,26 +175,49 @@
     </div>
 
     <script>
-        // --- SONIDO MÁGICO (WEB AUDIO API) ---
-        // Esto crea un sonido sin necesidad de archivos mp3
+        // --- SISTEMA DE SONIDO (WEB AUDIO API) ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSound() {
+        
+        // Sonido de ficha ("Pop")
+        function playMoveSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // Sonido de VICTORIA (Fanfarria)
+        function playWinSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
             
-            oscillator.type = 'sine'; // Tipo de sonido (suave)
-            oscillator.frequency.setValueAtTime(500, audioCtx.currentTime); // Tono inicial
-            oscillator.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1); // Tono final (efecto moneda)
+            // Notas: Do, Mi, Sol, Do (agudo)
+            const notes = [523.25, 659.25, 783.99, 1046.50]; 
             
-            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); // Volumen
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); // Desvanecer
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.1);
+            notes.forEach((freq, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.value = freq;
+                
+                // Tiempo de cada nota
+                const startTime = now + (i * 0.15);
+                const duration = 0.3;
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.2, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            });
         }
 
         const setupScreen = document.getElementById('setup-screen');
@@ -253,10 +283,9 @@
             createTokens();
         };
 
-        // --- CAMINO AJUSTADO (MÁS ARRIBA) ---
-        // He subido todos los puntos Y un 10-15% para dejar sitio abajo
+        // --- CAMINO ---
         const pathPoints = [
-            { x: 10, y: 75 }, // INICIO (Antes 88, ahora 75)
+            { x: 10, y: 75 }, 
             { x: 25, y: 65 }, 
             { x: 10, y: 45 }, 
             { x: 25, y: 35 },
@@ -299,8 +328,6 @@
                 token.dataset.playerName = player.name; 
                 token.style.backgroundColor = 'white'; 
                 
-                // Las fichas ahora salen justo debajo del nuevo INICIO
-                // Como el inicio está en Y=75%, las fichas estarán visibles
                 const offsetX = (i % 3 - 1) * 3; 
                 const offsetY = (Math.floor(i / 3)) * 3; 
                 token.style.left = `calc(${pathPoints[0].x}% + ${offsetX}vmin)`;
@@ -318,8 +345,6 @@
                 isDragging = true; 
                 element.style.zIndex = 1000; 
                 if(e.type === 'touchstart') e.preventDefault(); 
-                
-                // IMPORTANTE: Activar el motor de audio con el primer toque
                 if (audioCtx.state === 'suspended') audioCtx.resume();
             }
 
@@ -365,11 +390,12 @@
                 token.style.left = targetStep.style.left;
                 token.style.top = targetStep.style.top;
                 
-                // ¡SONIDO!
-                playSound();
-
+                // Verificar si es la meta para tocar fanfarria o sonido normal
                 if (targetStep.classList.contains('finish')) {
+                    playWinSound();
                     triggerWinSequence(token.dataset.playerName);
+                } else {
+                    playMoveSound();
                 }
             }
         }

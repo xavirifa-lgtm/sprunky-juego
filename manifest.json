@@ -1,10 +1,11 @@
 {
   "name": "Sprunki Pictionary",
   "short_name": "Sprunki",
-  "start_url": ".",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#333333",
   "theme_color": "#333333",
+  "orientation": "landscape",
   "icons": [
     {
       "src": "rojo.png",
