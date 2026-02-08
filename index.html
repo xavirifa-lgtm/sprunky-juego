@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sprunki Pictionary</title>
+    <title>Sprunki Pictionary: Tablet Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     <style>
         /* --- ESTILOS GENERALES --- */
@@ -11,8 +11,7 @@
             margin: 0; padding: 0;
             overflow: hidden; background-color: #333;
             touch-action: none; 
-            /* Fuente: Intenta Bungee, si no, usa Impact o Arial Black (que la tablet seguro tiene) */
-            font-family: 'Bungee', 'Impact', 'Arial Black', sans-serif;
+            font-family: 'Bungee', 'Impact', sans-serif;
             -webkit-user-select: none; user-select: none;
         }
 
@@ -23,22 +22,20 @@
             z-index: 5000; transition: opacity 0.5s;
         }
 
-        /* SELECCIÓN */
+        /* 1. SELECCIÓN */
         #setup-screen { background: rgba(0,0,0,0.95); color: white; text-align: center; }
         #char-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin: 30px 0; }
 
         .char-select-btn {
             width: 13vmin; height: 13vmin;
-            background-color: #555; /* Color de fondo por si falla la imagen */
-            background-size: cover; background-position: center;
+            background-color: #555; background-size: cover; background-position: center;
             border-radius: 50%; border: 4px solid rgba(255,255,255,0.3);
             cursor: pointer; opacity: 0.6; transition: 0.2s;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 2vmin; color: white; text-shadow: 0 0 5px black;
+            display: flex; align-items: center; justify-content: center; color: white;
         }
         .char-select-btn.selected { border-color: #2ed573; box-shadow: 0 0 20px #2ed573; opacity: 1; transform: scale(1.1); }
 
-        /* NOMBRES */
+        /* 2. NOMBRES */
         #name-screen { background: rgba(0,0,0,0.95); color: white; display: none; }
         #name-inputs-container {
             display: flex; flex-direction: column; gap: 15px; 
@@ -57,7 +54,7 @@
             background: transparent; border: none; border-bottom: 2px solid white;
             color: white; font-family: sans-serif; font-weight: bold; font-size: 24px;
             width: 100%; text-align: left; outline: none;
-            touch-action: auto !important; user-select: text !important; -webkit-user-select: text !important;
+            touch-action: auto !important; user-select: text !important;
         }
         .name-input::placeholder { color: rgba(255,255,255,0.5); font-size: 18px; }
 
@@ -70,10 +67,12 @@
         .action-btn.active { opacity: 1; pointer-events: auto; }
         .action-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b33939; }
 
-        /* JUEGO */
+        /* 3. JUEGO */
         #game-container {
-            position: relative; width: 100vw; height: 100vh;
-            background-color: #00d2ff; /* Azul cielo por si falla el fondo */
+            position: relative; width: 100vw; 
+            /* Usamos dvh para altura dinámica en móviles */
+            height: 100vh; height: 100dvh; 
+            background-color: #00d2ff; 
             background-image: url('fondo.webp'); background-size: cover; background-position: center;
             display: none;
         }
@@ -164,6 +163,28 @@
     </div>
 
     <script>
+        // --- SONIDO MÁGICO (WEB AUDIO API) ---
+        // Esto crea un sonido sin necesidad de archivos mp3
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine'; // Tipo de sonido (suave)
+            oscillator.frequency.setValueAtTime(500, audioCtx.currentTime); // Tono inicial
+            oscillator.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1); // Tono final (efecto moneda)
+            
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); // Volumen
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); // Desvanecer
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
         const setupScreen = document.getElementById('setup-screen');
         const nameScreen = document.getElementById('name-screen');
         const gameContainer = document.getElementById('game-container');
@@ -174,28 +195,14 @@
         const nameContainer = document.getElementById('name-inputs-container');
         const startBtn = document.getElementById('start-game-btn');
 
-        // LISTA DE NOMBRES DE ARCHIVO
-        // ¡¡Asegúrate que los archivos en la tablet se llamen exactamente así!!
-        const allImages = [
-            'verde.png', 
-            'rosa.png', 
-            'amarillo.png', 
-            'naranja.png', 
-            'verdeclaro.png', 
-            'rojo.png', 
-            'azul.png'
-        ];
-        
+        const allImages = ['verde.png', 'rosa.png', 'amarillo.png', 'naranja.png', 'verdeclaro.png', 'rojo.png', 'azul.png'];
         let selectedPlayers = []; 
 
         allImages.forEach(img => {
             const btn = document.createElement('div');
             btn.className = 'char-select-btn';
             btn.style.backgroundImage = `url('${img}')`;
-            
-            // Si la imagen falla, escribimos el nombre dentro para saber cuál falta
             btn.innerText = ""; 
-            
             btn.onclick = () => {
                 const idx = selectedPlayers.findIndex(p => p.img === img);
                 if(idx > -1) {
@@ -241,11 +248,22 @@
             createTokens();
         };
 
+        // --- CAMINO AJUSTADO (MÁS ARRIBA) ---
+        // He subido todos los puntos Y un 10-15% para dejar sitio abajo
         const pathPoints = [
-            { x: 10, y: 88 }, { x: 22, y: 75 }, { x: 10, y: 55 }, { x: 25, y: 40 },
-            { x: 45, y: 25 }, { x: 65, y: 20 }, { x: 85, y: 35 }, { x: 75, y: 55 },
-            { x: 55, y: 65 }, { x: 40, y: 80 }, { x: 65, y: 85 }, { x: 85, y: 70 },
-            { x: 90, y: 15 } 
+            { x: 10, y: 75 }, // INICIO (Antes 88, ahora 75)
+            { x: 25, y: 65 }, 
+            { x: 10, y: 45 }, 
+            { x: 25, y: 35 },
+            { x: 45, y: 25 }, 
+            { x: 65, y: 20 }, 
+            { x: 85, y: 35 }, 
+            { x: 75, y: 50 },
+            { x: 55, y: 55 }, 
+            { x: 40, y: 65 }, 
+            { x: 65, y: 70 }, 
+            { x: 85, y: 60 },
+            { x: 90, y: 15 } // META
         ];
         const colors = ['bg-red', 'bg-orange', 'bg-yellow', 'bg-green', 'bg-blue', 'bg-purple'];
 
@@ -274,14 +292,14 @@
                 token.className = 'token';
                 token.style.backgroundImage = `url('${player.img}')`;
                 token.dataset.playerName = player.name; 
-                
-                // Fondo de color por si falla la imagen
                 token.style.backgroundColor = 'white'; 
                 
+                // Las fichas ahora salen justo debajo del nuevo INICIO
+                // Como el inicio está en Y=75%, las fichas estarán visibles
                 const offsetX = (i % 3 - 1) * 3; 
                 const offsetY = (Math.floor(i / 3)) * 3; 
                 token.style.left = `calc(${pathPoints[0].x}% + ${offsetX}vmin)`;
-                token.style.top = `calc(${pathPoints[0].y}% + ${offsetY}vmin + 12vmin)`;
+                token.style.top = `calc(${pathPoints[0].y}% + 12vmin + ${offsetY}vmin)`; 
 
                 gameContainer.appendChild(token);
                 enableDrag(token);
@@ -295,6 +313,9 @@
                 isDragging = true; 
                 element.style.zIndex = 1000; 
                 if(e.type === 'touchstart') e.preventDefault(); 
+                
+                // IMPORTANTE: Activar el motor de audio con el primer toque
+                if (audioCtx.state === 'suspended') audioCtx.resume();
             }
 
             function onMove(e) {
@@ -338,6 +359,10 @@
             if (minDistance < 100 && targetStep) {
                 token.style.left = targetStep.style.left;
                 token.style.top = targetStep.style.top;
+                
+                // ¡SONIDO!
+                playSound();
+
                 if (targetStep.classList.contains('finish')) {
                     triggerWinSequence(token.dataset.playerName);
                 }
